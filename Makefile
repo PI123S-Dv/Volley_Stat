@@ -9,6 +9,7 @@ SRCS = $(SRCDIR)/main.cpp \
        $(SRCDIR)/MatchEvent.cpp \
        $(SRCDIR)/Statistics.cpp \
        $(SRCDIR)/AnalysisProcessor.cpp \
+       $(SRCDIR)/JSONReader.cpp \
        $(SRCDIR)/Dashboard.cpp
 
 OBJS = $(SRCS:.cpp=.o)
