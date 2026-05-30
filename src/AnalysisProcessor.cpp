@@ -1,6 +1,7 @@
 #include "AnalysisProcessor.h"
 #include <iostream>
 #include <iomanip>
+#include <map>
 #include <cstdlib>   // rand
 
 // ── MatchAnalysis ─────────────────────────────
@@ -21,10 +22,39 @@ void MatchAnalysis::buildStatistics(
     for (const auto& ps : awayPlayers) awayStats.addPlayerStats(ps);
 }
 
-int         MatchAnalysis::getMatchId()   const { return matchId; }
-std::string MatchAnalysis::getMatchDate() const { return matchDate; }
-std::string MatchAnalysis::getHomeTeam()  const { return homeTeam; }
-std::string MatchAnalysis::getAwayTeam()  const { return awayTeam; }
+void MatchAnalysis::buildStatisticsFromEvents() {
+    // Automatically build player stats from the events already loaded.
+    // Since we don't know which team each player belongs to from JSON alone,
+    // we split by player ID: odd IDs = home, even IDs = away.
+    // This is a simple heuristic — can be improved with real player data.
+    std::map<int, PlayerStatistics> homePlayers, awayPlayers;
+
+    for (const auto& ev : events) {
+        int pid = ev->getPlayerId();
+        std::string pname = "Player#" + std::to_string(pid);
+
+        if (pid % 2 != 0) {
+            // Odd player ID = home team
+            if (homePlayers.find(pid) == homePlayers.end())
+                homePlayers.emplace(pid, PlayerStatistics(pid, pname));
+            homePlayers.at(pid).processEvent(*ev);
+        } else {
+            // Even player ID = away team
+            if (awayPlayers.find(pid) == awayPlayers.end())
+                awayPlayers.emplace(pid, PlayerStatistics(pid, pname));
+            awayPlayers.at(pid).processEvent(*ev);
+        }
+    }
+
+    for (auto& [id, ps] : homePlayers) homeStats.addPlayerStats(ps);
+    for (auto& [id, ps] : awayPlayers) awayStats.addPlayerStats(ps);
+}
+
+int         MatchAnalysis::getMatchId()     const { return matchId; }
+std::string MatchAnalysis::getMatchDate()   const { return matchDate; }
+std::string MatchAnalysis::getHomeTeam()    const { return homeTeam; }
+std::string MatchAnalysis::getAwayTeam()    const { return awayTeam; }
+int         MatchAnalysis::getTotalEvents() const { return (int)events.size(); }
 
 const std::vector<std::unique_ptr<MatchEvent>>& MatchAnalysis::getEvents() const { return events; }
 const TeamStatistics& MatchAnalysis::getHomeStats() const { return homeStats; }
@@ -33,9 +63,9 @@ const TeamStatistics& MatchAnalysis::getAwayStats() const { return awayStats; }
 std::string MatchAnalysis::getSummary() const {
     return "Match #" + std::to_string(matchId) + "  " + matchDate + "\n" +
            homeTeam + " vs " + awayTeam + "\n" +
-           "Home points: " + std::to_string(homeStats.getTotalTeamPoints()) + "  " +
-           "Away points: " + std::to_string(awayStats.getTotalTeamPoints()) + "\n" +
-           "Total events recorded: " + std::to_string(events.size());
+           "Home points : " + std::to_string(homeStats.getTotalTeamPoints()) + "\n" +
+           "Away points : " + std::to_string(awayStats.getTotalTeamPoints()) + "\n" +
+           "Total events: " + std::to_string(events.size());
 }
 
 std::string MatchAnalysis::getRecommendations() const {
@@ -68,7 +98,6 @@ void MatchAnalysis::printScoreboard() const {
 // ── AnalysisProcessor ─────────────────────────
 AnalysisProcessor::AnalysisProcessor() : nextEventId(1) {}
 
-// Private helpers – simulate AI detection with deterministic pseudo-random output
 std::unique_ptr<MatchEvent> AnalysisProcessor::generateServe(int pid, double ts) {
     static const char* types[] = {"jump", "float", "underhand"};
     bool ok = (rand() % 3) != 0;
@@ -109,32 +138,30 @@ std::unique_ptr<MatchAnalysis> AnalysisProcessor::processVideo(
 
     auto analysis = std::make_unique<MatchAnalysis>(matchId, matchDate, homeTeam, awayTeam);
 
-    // Simulate 6 players per team (IDs 1–6 home, 7–12 away)
-    // and generate 30 events spread across the video duration
-    srand(42);  // deterministic output for demo
-    double duration = 3600.0;  // assume 1-hour video
+    srand(42);
+    double duration = 3600.0;
 
-    // Player stats accumulators
     std::vector<PlayerStatistics> homePlayers, awayPlayers;
-    for (int i = 1; i <= 6; ++i) homePlayers.emplace_back(i, "HomePlayer#" + std::to_string(i));
-    for (int i = 7; i <= 12; ++i) awayPlayers.emplace_back(i, "AwayPlayer#" + std::to_string(i));
+    for (int i = 1; i <= 6; ++i)
+        homePlayers.emplace_back(i, "HomePlayer#" + std::to_string(i));
+    for (int i = 7; i <= 12; ++i)
+        awayPlayers.emplace_back(i, "AwayPlayer#" + std::to_string(i));
 
     for (int i = 0; i < 30; ++i) {
-        double ts = (duration / 30.0) * i + (rand() % 60);
-        int teamPick = rand() % 2;   // 0 = home, 1 = away
-        int playerIdx = rand() % 6;
-        int pid = teamPick == 0 ? (playerIdx + 1) : (playerIdx + 7);
-        int eventType = rand() % 4;
+        double ts       = (duration / 30.0) * i + (rand() % 60);
+        int teamPick    = rand() % 2;
+        int playerIdx   = rand() % 6;
+        int pid         = teamPick == 0 ? (playerIdx + 1) : (playerIdx + 7);
+        int eventType   = rand() % 4;
 
         std::unique_ptr<MatchEvent> ev;
         switch (eventType) {
-            case 0: ev = generateServe(pid, ts);   break;
-            case 1: ev = generateAttack(pid, ts);  break;
-            case 2: ev = generateBlock(pid, ts);   break;
+            case 0: ev = generateServe(pid, ts);    break;
+            case 1: ev = generateAttack(pid, ts);   break;
+            case 2: ev = generateBlock(pid, ts);    break;
             default: ev = generateDefense(pid, ts); break;
         }
 
-        // Route event to correct player stats
         if (teamPick == 0) homePlayers[playerIdx].processEvent(*ev);
         else               awayPlayers[playerIdx].processEvent(*ev);
 
@@ -142,6 +169,6 @@ std::unique_ptr<MatchAnalysis> AnalysisProcessor::processVideo(
     }
 
     analysis->buildStatistics(homePlayers, awayPlayers);
-    std::cout << "✅  Analysis complete. " << 30 << " events detected.\n";
+    std::cout << "✅  Simulated analysis complete. 30 events generated.\n";
     return analysis;
 }
