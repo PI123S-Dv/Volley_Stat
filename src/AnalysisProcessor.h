@@ -34,23 +34,30 @@ public:
     MatchAnalysis& operator=(const MatchAnalysis&) = delete;
 
     void addEvent(std::unique_ptr<MatchEvent> event);
+
+    // Original method – pass player lists explicitly (used by AnalysisProcessor)
     void buildStatistics(const std::vector<PlayerStatistics>& homePlayerStats,
                          const std::vector<PlayerStatistics>& awayPlayerStats);
 
-    int         getMatchId()   const;
-    std::string getMatchDate() const;
-    std::string getHomeTeam()  const;
-    std::string getAwayTeam()  const;
+    // New method – build stats from events already added (used by JSONReader)
+    // Automatically assigns players to home/away based on rally number
+    void buildStatisticsFromEvents();
+
+    int         getMatchId()     const;
+    std::string getMatchDate()   const;
+    std::string getHomeTeam()    const;
+    std::string getAwayTeam()    const;
+    int         getTotalEvents() const;
 
     const std::vector<std::unique_ptr<MatchEvent>>& getEvents() const;
     const TeamStatistics& getHomeStats() const;
     const TeamStatistics& getAwayStats() const;
 
-    std::string getSummary()        const;
+    std::string getSummary()         const;
     std::string getRecommendations() const;
 
-    void printTimeline()    const;
-    void printScoreboard()  const;
+    void printTimeline()   const;
+    void printScoreboard() const;
 };
 
 // ─────────────────────────────────────────────
@@ -71,7 +78,7 @@ private:
 public:
     AnalysisProcessor();
 
-    // Main entry point – analyses video and returns a complete MatchAnalysis
+    // Simulated analysis – used when no real JSON is available
     std::unique_ptr<MatchAnalysis> processVideo(
         VideoFile& video,
         int matchId,
