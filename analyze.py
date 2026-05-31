@@ -5,7 +5,7 @@ from inference_sdk import InferenceHTTPClient
 
 CLIENT = InferenceHTTPClient(
     api_url="https://detect.roboflow.com",
-    api_key="BAnKCFkYPrS0Le1z4q5Q"
+    api_key="PASTE_YOUR_API_KEY_HERE"
 )
 MODEL_ID = "volleyball-actions-cptry/11"
 
@@ -22,16 +22,28 @@ CLASS_COLORS = {
     "Block":   (0,   140, 255),
     "dig":     (255, 0,   255),
     "Dig":     (255, 0,   255),
+    "set":     (255, 255, 0  ),
+    "Set":     (255, 255, 0  ),
 }
 
+# ── Rally states ──────────────────────────────────────────
 WAITING  = "WAITING"
 ACTIVE   = "ACTIVE"
 COOLDOWN = "COOLDOWN"
 
 RALLY_START_ACTIONS = {"serve", "Serve"}
 RALLY_END_ACTIONS   = {"attack", "Attack", "spike", "Spike", "dig", "Dig"}
+# Set/Block are mid-rally actions — they don't end the rally
 
+# How long the same action must wait before being saved again
+DUPLICATE_WINDOW_SECONDS = 2.0
+
+# How long after a rally-ending action before we confirm point is over
 COOLDOWN_SECONDS = 2.5
+
+# ─────────────────────────────────────────────────────────
+#  RALLY TRACKER
+# ─────────────────────────────────────────────────────────
 
 class RallyTracker:
     def __init__(self):
@@ -42,6 +54,23 @@ class RallyTracker:
         self.rally_number   = 0
         self.ball_positions = []
 
+    # ── Duplicate filter ──────────────────────────────────
+    def is_duplicate(self, event_type, timestamp):
+        """
+        Returns True if this exact action type was already saved
+        within the last DUPLICATE_WINDOW_SECONDS.
+        Checks all recent events, not just the last one —
+        so Block/Set alternating can't bypass the filter.
+        """
+        for past_event in reversed(self.current_rally):
+            if past_event["type"] == event_type:
+                if timestamp - past_event["timestamp"] < DUPLICATE_WINDOW_SECONDS:
+                    return True   # same action seen recently — skip it
+                else:
+                    break         # same type but long ago — allow it
+        return False
+
+    # ── Ball-based serve detection ────────────────────────
     def check_ball_serve(self, ball_pos, timestamp):
         """
         Detects a serve from ball movement alone.
@@ -70,8 +99,6 @@ class RallyTracker:
         dist  = ((newer[0]-older[0])**2 + (newer[1]-older[1])**2) ** 0.5
         speed = dist / time_diff
 
-        # 80 px/s = serve motion
-        # Lower = more sensitive, Higher = fewer false positives
         if speed > 80:
             print(f"\n  🏐 Ball-based serve at t={timestamp:.1f}s "
                   f"(speed={speed:.0f}px/s) — likely far-side serve")
@@ -80,7 +107,14 @@ class RallyTracker:
 
         return False
 
+    # ── Main event processor ──────────────────────────────
     def process_event(self, event_type, timestamp, position, confidence):
+        """
+        Feed each detected action into the tracker.
+        Returns current state string.
+        """
+
+        # ── WAITING ───────────────────────────────────────
         if self.state == WAITING:
             if event_type in RALLY_START_ACTIONS:
                 self.state         = ACTIVE
@@ -95,10 +129,10 @@ class RallyTracker:
                       f"at t={timestamp:.1f}s")
             return self.state
 
+        # ── ACTIVE ────────────────────────────────────────
         elif self.state == ACTIVE:
-            if (not self.current_rally or
-                self.current_rally[-1]["type"] != event_type or
-                timestamp - self.current_rally[-1]["timestamp"] > 1.5):
+
+            if not self.is_duplicate(event_type, timestamp):
                 self.current_rally.append({
                     "type":       event_type,
                     "timestamp":  timestamp,
@@ -109,12 +143,14 @@ class RallyTracker:
                       f"| {event_type:10s} | t={timestamp:.1f}s "
                       f"| conf={confidence:.0%}")
 
+            # Rally-ending action → enter cooldown
             if event_type in RALLY_END_ACTIONS:
                 self.state          = COOLDOWN
                 self.cooldown_until = timestamp + COOLDOWN_SECONDS
                 print(f"  ⏳ Cooldown — waiting {COOLDOWN_SECONDS}s "
                       f"to confirm point is over")
 
+            # New serve while active = old rally ended, new one starts
             elif event_type in RALLY_START_ACTIONS and len(self.current_rally) > 1:
                 self._end_rally(timestamp)
                 self.state         = ACTIVE
@@ -130,7 +166,10 @@ class RallyTracker:
 
             return self.state
 
+        # ── COOLDOWN ──────────────────────────────────────
         elif self.state == COOLDOWN:
+
+            # New serve = previous rally confirmed over, new one starts
             if event_type in RALLY_START_ACTIONS:
                 self._end_rally(timestamp)
                 self.state         = ACTIVE
@@ -144,10 +183,9 @@ class RallyTracker:
                 print(f"\n  🏐 Rally #{self.rally_number} STARTED "
                       f"at t={timestamp:.1f}s")
 
+            # Another end-action in cooldown → add if not duplicate, reset timer
             elif event_type in RALLY_END_ACTIONS:
-                if (not self.current_rally or
-                    self.current_rally[-1]["type"] != event_type or
-                    timestamp - self.current_rally[-1]["timestamp"] > 1.5):
+                if not self.is_duplicate(event_type, timestamp):
                     self.current_rally.append({
                         "type":       event_type,
                         "timestamp":  timestamp,
@@ -161,6 +199,7 @@ class RallyTracker:
         return self.state
 
     def tick(self, timestamp):
+        """Call every frame — handles cooldown expiry."""
         if self.state == COOLDOWN and timestamp >= self.cooldown_until:
             self._end_rally(timestamp)
             self.state = WAITING
@@ -182,10 +221,12 @@ class RallyTracker:
             self.current_rally = []
 
     def finish(self, timestamp):
+        """Save any unfinished rally at end of video."""
         if self.current_rally:
             self._end_rally(timestamp)
 
     def get_all_events(self):
+        """Flat list of all events across all rallies for C++ JSON."""
         events = []
         for rally in self.all_rallies:
             for e in rally["events"]:
@@ -194,6 +235,10 @@ class RallyTracker:
                 events.append(event)
         return events
 
+
+# ─────────────────────────────────────────────────────────
+#  MAIN
+# ─────────────────────────────────────────────────────────
 
 VIDEO_PATH  = "test_match.mp4"
 OUTPUT_PATH = "annotated_match.mp4"
@@ -228,8 +273,10 @@ while True:
     frame_number += 1
     timestamp = frame_number / fps
 
+    # Tick tracker every frame — handles cooldown expiry
     tracker.tick(timestamp)
 
+    # Call API every 15 frames
     if frame_number % 15 == 0:
         try:
             cv2.imwrite("temp_frame.jpg", frame)
@@ -302,7 +349,7 @@ while True:
                     round(confidence, 2)
                 )
 
-            # WAITING — only accept serves, with lower confidence threshold
+            # WAITING — only accept serves with lower confidence threshold
             elif tracker.state == WAITING:
                 if class_name in RALLY_START_ACTIONS and confidence > 0.25:
                     cv2.rectangle(frame, (x1,y1), (x2,y2), color, 3)
@@ -349,7 +396,10 @@ while True:
 
     out.write(frame)
 
-# Wrap up
+# ─────────────────────────────────────────────────────────
+#  WRAP UP
+# ─────────────────────────────────────────────────────────
+
 tracker.finish(frame_number / fps)
 cap.release()
 out.release()
