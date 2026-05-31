@@ -5,7 +5,7 @@ from inference_sdk import InferenceHTTPClient
 
 CLIENT = InferenceHTTPClient(
     api_url="https://detect.roboflow.com",
-    api_key="PASTE_YOUR_API_KEY_HERE"
+    api_key="BAnKCFkYPrS0Le1z4q5Q"
 )
 MODEL_ID = "volleyball-actions-cptry/11"
 

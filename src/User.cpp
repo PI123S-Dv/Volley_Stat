@@ -36,9 +36,9 @@ std::string Coach::uploadVideo(VideoFile& video) {
     ValidationResult res = video.validate();
     if (res.valid) {
         managedMatchIds.push_back(video.fileId);
-        return "✅  Coach " + name + " successfully uploaded '" + video.filename + "'";
+        return "[OK]  Coach " + name + " successfully uploaded '" + video.filename + "'";
     }
-    return "❌  Upload failed: " + res.reason;
+    return "[FAIL]  Upload failed: " + res.reason;
 }
 
 std::vector<int> Coach::getManagedMatchIds() const { return managedMatchIds; }

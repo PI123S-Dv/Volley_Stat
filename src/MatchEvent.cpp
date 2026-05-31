@@ -50,11 +50,11 @@ int         Attack::getSpeed()     const { return speed; }
 std::string Attack::getEventType() const { return "Attack"; }
 
 std::string Attack::getSummary() const {
-    return MatchEvent::getSummary() + "  Zone:" + zone + "  Speed:" + std::to_string(speed) + "km/h";
+    return MatchEvent::getSummary() + "  Zone:" + zone;
 }
 void Attack::print() const {
     MatchEvent::print();
-    std::cout << "    Zone: " << zone << "  |  Speed: " << speed << " km/h\n";
+    std::cout << "    Zone: " << zone << "\n";
 }
 
 // ── Block ─────────────────────────────────────

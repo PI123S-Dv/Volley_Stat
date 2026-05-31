@@ -57,13 +57,13 @@ void ScoreTracker::processRally(int rallyNumber,
 
     if (homeWinsSet) {
         ++homeSets;
-        std::cout << "  🏆 SET WON by " << homeTeam
+        std::cout << "  [SET] SET WON by " << homeTeam
                   << " (" << homeSets << "-" << awaySets << " sets)\n";
         homeScore = 0;
         awayScore = 0;
     } else if (awayWinsSet) {
         ++awaySets;
-        std::cout << "  🏆 SET WON by " << awayTeam
+        std::cout << "  [SET] SET WON by " << awayTeam
                   << " (" << homeSets << "-" << awaySets << " sets)\n";
         homeScore = 0;
         awayScore = 0;

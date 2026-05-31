@@ -83,7 +83,7 @@ std::unique_ptr<MatchEvent> JSONReader::parseEvent(
     }
 
     // Unknown type — default to Defense
-    std::cout << "  ⚠  Unknown event type '" << type << "' — defaulting to Defense\n";
+    std::cout << "  [WARN]  Unknown event type '" << type << "' — defaulting to Defense\n";
     return std::make_unique<Defense>(eventId, timestamp, playerId,
                                     successful, type);
 }
@@ -112,12 +112,12 @@ std::unique_ptr<MatchAnalysis> JSONReader::load(
 {
     std::ifstream file(filePath);
     if (!file.is_open()) {
-        std::cout << "❌  JSONReader: cannot open '" << filePath << "'\n";
+        std::cout << "[FAIL]  JSONReader: cannot open '" << filePath << "'\n";
         std::cout << "    Make sure analyze.py has been run first.\n";
         return nullptr;
     }
 
-    std::cout << "📂  Reading events from '" << filePath << "'...\n";
+    std::cout << "[FILE]  Reading events from '" << filePath << "'...\n";
 
     auto analysis = std::make_unique<MatchAnalysis>(
         matchId, matchDate, homeTeam, awayTeam);
@@ -194,13 +194,13 @@ std::unique_ptr<MatchAnalysis> JSONReader::load(
     }
 
     if (eventsLoaded == 0) {
-        std::cout << "⚠  No events found in '" << filePath << "'\n";
+        std::cout << "[WARN]  No events found in '" << filePath << "'\n";
         return nullptr;
     }
 
     // Build statistics from the loaded events
     analysis->buildStatisticsFromEvents();
 
-    std::cout << "✅  Loaded " << eventsLoaded << " events from JSON\n";
+    std::cout << "[OK]  Loaded " << eventsLoaded << " events from JSON\n";
     return analysis;
 }

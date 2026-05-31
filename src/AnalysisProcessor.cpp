@@ -126,15 +126,15 @@ std::unique_ptr<MatchAnalysis> AnalysisProcessor::processVideo(
     const std::string& homeTeam, const std::string& awayTeam)
 {
     if (!video.getIsValidated()) {
-        std::cout << "⚠  Video not validated. Running validation...\n";
+        std::cout << "[WARN]  Video not validated. Running validation...\n";
         auto res = video.validate();
         if (!res.valid) {
-            std::cout << "❌  Cannot process: " << res.reason << "\n";
+            std::cout << "[FAIL]  Cannot process: " << res.reason << "\n";
             return nullptr;
         }
     }
 
-    std::cout << "🎥  AI processing '" << video.filename << "'...\n";
+    std::cout << "[VIDEO]  AI processing '" << video.filename << "'...\n";
 
     auto analysis = std::make_unique<MatchAnalysis>(matchId, matchDate, homeTeam, awayTeam);
 
@@ -169,6 +169,6 @@ std::unique_ptr<MatchAnalysis> AnalysisProcessor::processVideo(
     }
 
     analysis->buildStatistics(homePlayers, awayPlayers);
-    std::cout << "✅  Simulated analysis complete. 30 events generated.\n";
+    std::cout << "[OK]  Simulated analysis complete. 30 events generated.\n";
     return analysis;
 }
