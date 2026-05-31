@@ -10,6 +10,8 @@ SRCS = $(SRCDIR)/main.cpp \
        $(SRCDIR)/Statistics.cpp \
        $(SRCDIR)/AnalysisProcessor.cpp \
        $(SRCDIR)/JSONReader.cpp \
+       $(SRCDIR)/ScoreTracker.cpp \
+       $(SRCDIR)/PlayerIdentifier.cpp \
        $(SRCDIR)/Dashboard.cpp
 
 OBJS = $(SRCS:.cpp=.o)
