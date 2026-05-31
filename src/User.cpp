@@ -60,15 +60,15 @@ std::string Analyst::getRole()             const { return "Analyst"; }
 std::string Analyst::generateReport(const MatchAnalysis& analysis) {
     ++reportsGenerated;
     std::string report;
-    report += "══════════════════════════════════════\n";
+    report += "==================================================\n";
     report += "  MATCH REPORT #" + std::to_string(reportsGenerated) + "\n";
     report += "  Analyst : " + name + " (" + specialization + ")\n";
     report += "  Match ID: " + std::to_string(analysis.getMatchId()) + "\n";
-    report += "══════════════════════════════════════\n";
+    report += "==================================================\n";
     report += analysis.getSummary() + "\n";
-    report += "── Recommendations ──\n";
+    report += "-- Recommendations --\n";
     report += analysis.getRecommendations() + "\n";
-    report += "══════════════════════════════════════\n";
+    report += "==================================================\n";
     return report;
 }
 

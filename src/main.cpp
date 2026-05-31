@@ -14,6 +14,10 @@
 #include "ScoreTracker.h"
 #include "PlayerIdentifier.h"
 #include "Dashboard.h"
+#include "CppPrinciples.h"
+
+// Forward declaration of demonstration function
+int runCppPrinciplesDemonstration();
 
 static void bar(char c = '=', int len = 50) {
     std::cout << std::string(len, c) << "\n";
@@ -45,10 +49,7 @@ const Account* login() {
     bar();
     std::cout << "  VOLLEYBALL ANALYSIS PLATFORM  v3.0\n";
     bar();
-    std::cout << "\n  Available accounts:\n";
-    std::cout << "    username: coach1   password: pass123\n";
-    std::cout << "    username: coach2   password: pass456\n";
-    std::cout << "    username: admin    password: admin\n\n";
+    std::cout << "\n  Please log in:\n\n";
 
     for (int attempt = 1; attempt <= 3; ++attempt) {
         std::string username, password;
@@ -159,6 +160,28 @@ loadEvents(const std::string& path) {
 // ─────────────────────────────────────────────
 int main() {
     std::cout << "\n";
+
+    // ── DEMO MENU ──────────────────────────────
+    bar();
+    std::cout << "  VOLLEYBALL ANALYSIS PLATFORM  v3.0\n";
+    bar();
+    std::cout << "\n  Select an option:\n";
+    std::cout << "    1. C++ Principles Demonstration (8 Core Concepts)\n";
+    std::cout << "    2. Volleyball Analysis Application\n";
+    std::cout << "    3. Exit\n\n";
+    std::cout << "  Enter your choice (1-3): ";
+    
+    std::string choice;
+    std::cin >> choice;
+
+    if (choice == "1") {
+        return runCppPrinciplesDemonstration();
+    } else if (choice == "3") {
+        std::cout << "\n  Goodbye!\n\n";
+        return 0;
+    } else if (choice != "2") {
+        std::cout << "\n  Invalid choice. Proceeding to Volleyball Analysis.\n\n";
+    }
 
     // ── LOGIN ─────────────────────────────────
     const Account* acc = login();
